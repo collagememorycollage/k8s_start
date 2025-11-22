@@ -1,13 +1,17 @@
 1) отключаем файл подкачки так как kubelet не работает с включенным файлом подкачки
+   
 sudo swapoff -a
 
-2) также отключаем данный файл после перезагрузки
+3) также отключаем данный файл после перезагрузки
+   
 sudo sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab
 
-3) обновляем пакеты
+4) обновляем пакеты
+   
 sudo apt get update -y
 
-4) добавляем репы на keying
+5) добавляем репы на keying
+   
 sudo mkdir -p /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o \
 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
@@ -16,42 +20,51 @@ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 5) повторное обновление системы
+   
 sudo apt-get update -y
 
-6) устанавливаем пакеты самого кубера
+7) устанавливаем пакеты самого кубера
+   
 kubelet будет как раз запускать  наши контейнеры через containerd
 kubeadm для того, чтобы наш кластер развернуть
 kubectl для того, чтобы взаимодействовать с кластером
 sudo apt-get install -y kubelet kubeadm kubectl containerd
 
-7) sudo apt-mark hold kubelet kubeadm kubectl
+8) sudo apt-mark hold kubelet kubeadm kubectl
 
-8) переходим на root
+9) переходим на root
+   
 sudo su
 
-9) Далее активируем модуль ядра
+10) Далее активируем модуль ядра
+    
 modprobe br_netfilter
 modprobe overlay
 
-10) для того, чтобы модули ядра активировались сами, необходимо прописать
+11) для того, чтобы модули ядра активировались сами, необходимо прописать
 
 echo -e "br_netfilter\noverlay" | sudo tee -a /etc/modules
 
 11) делаем проброс портов на самих машинах
+    
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 
-12) устанавливаем бридж
+13) устанавливаем бридж
+    
 echo "net.bridge.bridge-nf-call-iptables=1" >> /etc/sysctl.conf
 
-13) после проверяем что правила для сети применились
+14) после проверяем что правила для сети применились
 
-14) создаем папку для containerd
+15) создаем папку для containerd
+    
 sudo mkdir /etc/containerd
 
-15) далее настроим конфиг для нашего containerd
+16) далее настроим конфиг для нашего containerd
+    
 sudo nano /etc/containerd/config.toml
 
-16) вставляем наш конфиг и перезапускаем службу
+17) вставляем наш конфиг и перезапускаем службу
+    
 version = 2
 [plugins]
   [plugins."io.containerd.grpc.v1.cri"]
@@ -65,9 +78,11 @@ version = 2
 systemctl restart containerd
 
 17) получаем ip мастер ноды, чтобы иницииализировать кластер
+    
 ip a
 
 18) разворачиваем нашу мастер ноду
+    
 где 10.128.0.28 это ip мастер ноды, а 10.244.0.0/16 ip подсети для нашего приложения
 sudo kubeadm init \
   --apiserver-advertise-address=10.128.0.28 \
@@ -76,13 +91,14 @@ sudo kubeadm init \
 также можно добавить флаг, чтобы добавить внешний ip адрес --apiserver-extra-sans=158.100.2.1
 
 19) устанавливаем дефолнтые настройки kubeconfig
+    
 mkdir -p $HOME/.kube (создаем на каждой ноде)
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 после копируем нашу сгенерированную конфигурацию с мастер ноды на остальные
 
-# install cni flannel
+install cni flannel
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
 Только на worker Nodes
